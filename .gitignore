@@ -16,6 +16,7 @@
 
 # Output of go build will be the project name `invite`
 go-git-server
+tmp/*
 
 #####################################################
 # Mac OSX

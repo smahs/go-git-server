@@ -1,12 +1,13 @@
 package main
 
 import (
-	"appgit/storage"
 	"log"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"testing"
+
+	"github.com/smahs/go-git-server/storage"
 
 	git "gopkg.in/src-d/go-git.v4"
 )

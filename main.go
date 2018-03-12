@@ -1,20 +1,23 @@
 package main
 
 import (
-	"appgit/storage"
 	"context"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
+
+	"github.com/smahs/go-git-server/storage"
 )
 
 var dbPath = "tmp/db"
 var addr *url.URL
 var server *http.Server
 var store *storage.Store
+var wg sync.WaitGroup
 
 func main() {
 	var err error
@@ -23,11 +26,15 @@ func main() {
 		log.Fatal(err)
 	}
 
+	wg.Add(1)
 	if err := runServer(); err != nil {
 		log.Fatal("Server initiation failed")
 	}
 
-	waitForInterrupt()
+	wg.Add(1)
+	go waitForInterrupt()
+
+	wg.Wait()
 }
 
 func runServer() error {
@@ -38,12 +45,14 @@ func runServer() error {
 		return err
 	}
 
-	server := http.Server{
-		Addr:    addr.String(),
-		Handler: initMux(),
+	server = &http.Server{
+		Addr:        addr.Host,
+		Handler:     initMux(),
+		IdleTimeout: time.Duration(10 * time.Second),
 	}
 
 	go func() {
+		defer wg.Done()
 		if err := server.ListenAndServe(); err != nil {
 			log.Println(err)
 		}
@@ -52,8 +61,10 @@ func runServer() error {
 	return nil
 }
 
-// Graceful Shurdown on SIGINT (Ctrl-C)
+// Graceful Shutdown on SIGINT (Ctrl-C)
 func waitForInterrupt() {
+	defer wg.Done()
+
 	var c = make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
@@ -66,7 +77,4 @@ func waitForInterrupt() {
 	defer cancel()
 
 	server.Shutdown(ctx)
-
-	log.Println("shutting down")
-	os.Exit(0)
 }
